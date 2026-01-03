@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=5.0, user-scalable=yes">
     <title>AI大模型原理3D演示 - 嵌入层→Transformer→输出层</title>
     <style>
         * {
@@ -60,6 +60,44 @@
         @media screen and (max-width: 900px) and (orientation: portrait) {
             .rotate-prompt {
                 display: flex;
+            }
+        }
+
+        /* 手机横屏时允许滚动 */
+        @media screen and (max-width: 900px) and (orientation: landscape) {
+            body {
+                overflow: auto;
+                min-height: 100vh;
+            }
+            #canvas-container {
+                position: fixed;
+                top: 0;
+                left: 0;
+            }
+            .ui-wrapper {
+                position: relative;
+                min-height: 100vh;
+            }
+            .info-panel, .candidates-panel {
+                position: relative;
+                top: auto;
+                left: auto;
+                right: auto;
+                margin: 10px;
+                width: calc(100% - 20px);
+                max-height: none;
+            }
+            .legend, .hint {
+                position: relative;
+                bottom: auto;
+                left: auto;
+                right: auto;
+                margin: 10px;
+            }
+            .bottom-bar {
+                position: relative;
+                bottom: auto;
+                margin: 20px auto;
             }
         }
 

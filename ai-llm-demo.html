@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=5.0, user-scalable=yes">
     <title>AI大语言模型原理演示</title>
     <style>
         * {
@@ -64,6 +64,18 @@
         @media screen and (max-width: 900px) and (orientation: portrait) {
             .rotate-prompt {
                 display: flex;
+            }
+        }
+
+        /* 手机横屏时允许滚动 */
+        @media screen and (max-width: 900px) and (orientation: landscape) {
+            html, body {
+                overflow: auto;
+                height: auto;
+                min-height: 100vh;
+            }
+            .scale-wrapper {
+                min-height: 100vh;
             }
         }
 
