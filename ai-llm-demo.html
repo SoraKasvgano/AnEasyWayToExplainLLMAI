@@ -22,6 +22,58 @@
             color: #1d1d1f;
         }
 
+        /* 横屏提示遮罩 */
+        .rotate-prompt {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            z-index: 99999;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            gap: 30px;
+        }
+
+        .rotate-prompt .rotate-icon {
+            font-size: 80px;
+            animation: rotatePhone 2s ease-in-out infinite;
+        }
+
+        @keyframes rotatePhone {
+            0%, 100% { transform: rotate(0deg); }
+            50% { transform: rotate(90deg); }
+        }
+
+        .rotate-prompt .text {
+            color: white;
+            font-size: 1.4rem;
+            text-align: center;
+            padding: 0 20px;
+        }
+
+        .rotate-prompt .subtext {
+            color: rgba(255,255,255,0.6);
+            font-size: 1rem;
+        }
+
+        /* 手机竖屏时显示提示 */
+        @media screen and (max-width: 900px) and (orientation: portrait) {
+            .rotate-prompt {
+                display: flex;
+            }
+        }
+
+        /* 手机横屏自适应缩放 */
+        .scale-wrapper {
+            width: 1200px;
+            height: 100vh;
+            transform-origin: top left;
+        }
+
         .main-container {
             height: 100vh;
             display: flex;
@@ -739,6 +791,14 @@
     </style>
 </head>
 <body>
+    <!-- 横屏提示 -->
+    <div class="rotate-prompt">
+        <div class="rotate-icon">📱</div>
+        <div class="text">请将手机横过来</div>
+        <div class="subtext">获得最佳观看体验</div>
+    </div>
+
+    <div class="scale-wrapper">
     <div class="main-container">
         <!-- 顶部标题栏 -->
         <div class="header">
@@ -878,12 +938,42 @@
             <div class="iteration-badge" id="iterationBadge">等待开始</div>
         </div>
     </div>
+    </div>
 
     <script>
         // 检测是否独立运行（不在iframe中）
         if (window.self === window.top) {
             document.body.classList.add('standalone');
         }
+
+        // 手机横屏自适应缩放
+        function handleResize() {
+            const wrapper = document.querySelector('.scale-wrapper');
+            const baseWidth = 1200;
+            const baseHeight = 800;
+            const windowWidth = window.innerWidth;
+            const windowHeight = window.innerHeight;
+
+            // 只在小屏幕上应用缩放
+            if (windowWidth < baseWidth || windowHeight < baseHeight) {
+                const scaleX = windowWidth / baseWidth;
+                const scaleY = windowHeight / baseHeight;
+                const scale = Math.min(scaleX, scaleY);
+                wrapper.style.transform = `scale(${scale})`;
+                wrapper.style.width = baseWidth + 'px';
+                wrapper.style.height = baseHeight + 'px';
+            } else {
+                wrapper.style.transform = 'none';
+                wrapper.style.width = '100%';
+                wrapper.style.height = '100vh';
+            }
+        }
+
+        window.addEventListener('resize', handleResize);
+        window.addEventListener('orientationchange', () => {
+            setTimeout(handleResize, 100);
+        });
+        handleResize();
 
         const inputText = "天王盖地虎";
         const outputText = "宝塔镇河妖";
