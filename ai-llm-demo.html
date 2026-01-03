@@ -76,6 +76,60 @@
             }
             .scale-wrapper {
                 min-height: 100vh;
+                width: 100% !important;
+                height: auto !important;
+                transform: none !important;
+            }
+            .main-container {
+                height: auto;
+                min-height: 100vh;
+                padding: 10px;
+                gap: 8px;
+            }
+            .header {
+                padding-left: 0;
+                flex-wrap: wrap;
+                gap: 10px;
+            }
+            .title {
+                font-size: 1.2rem;
+            }
+            .start-btn {
+                padding: 8px 16px;
+                font-size: 0.9rem;
+            }
+            .content {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto auto auto;
+                gap: 10px;
+            }
+            .card {
+                min-height: 280px;
+                max-height: none;
+            }
+            .card-content {
+                min-height: 200px;
+                overflow-y: auto;
+            }
+            .status-bar {
+                flex-wrap: wrap;
+                padding: 8px 10px;
+                gap: 10px;
+            }
+            .loop-step {
+                padding: 4px 6px;
+            }
+            .loop-step-icon {
+                width: 26px;
+                height: 26px;
+                font-size: 0.8rem;
+            }
+            .loop-step-label {
+                font-size: 0.6rem;
+            }
+            .iteration-badge {
+                font-size: 0.75rem;
+                padding: 4px 10px;
             }
         }
 
@@ -969,26 +1023,16 @@
         // 手机横屏自适应缩放
         function handleResize() {
             const wrapper = document.querySelector('.scale-wrapper');
-            const baseWidth = 1200;
-            const baseHeight = 800;
             const windowWidth = window.innerWidth;
             const windowHeight = window.innerHeight;
 
-            // 只在小屏幕上应用缩放（手机横屏）
+            // 手机横屏时不缩放，使用响应式布局
             if (windowWidth < 1000) {
-                // 计算缩放比例，让内容尽可能占满屏幕
-                const scaleX = windowWidth / baseWidth;
-                const scaleY = windowHeight / baseHeight;
-                const scale = Math.max(scaleX, scaleY); // 使用较大的缩放比，占满屏幕
-
-                wrapper.style.transform = `scale(${scale})`;
-                wrapper.style.width = baseWidth + 'px';
-                wrapper.style.height = baseHeight + 'px';
-                wrapper.style.transformOrigin = 'top left';
-
-                // 调整body以适应缩放后的内容
-                document.body.style.minHeight = (baseHeight * scale) + 'px';
-                document.body.style.minWidth = (baseWidth * scale) + 'px';
+                wrapper.style.transform = 'none';
+                wrapper.style.width = '100%';
+                wrapper.style.height = 'auto';
+                document.body.style.minHeight = '';
+                document.body.style.minWidth = '';
             } else {
                 wrapper.style.transform = 'none';
                 wrapper.style.width = '100%';
