@@ -1,0 +1,1197 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI大语言模型原理演示</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+            background: #f5f5f7;
+            color: #1d1d1f;
+        }
+
+        .main-container {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding: 12px 20px;
+            gap: 10px;
+        }
+
+        /* 顶部标题栏 */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+            padding-left: 200px; /* 为标签切换器留空间 */
+            transition: padding-left 0.3s ease;
+        }
+
+        /* 独立页面时不需要左边距 */
+        body.standalone .header {
+            padding-left: 0;
+        }
+
+        .title {
+            color: #1d1d1f;
+            font-size: 1.6rem;
+            font-weight: 600;
+        }
+
+        .start-btn {
+            background: #007AFF;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .start-btn:hover {
+            transform: translateY(-2px);
+            background: #0066d6;
+        }
+        .start-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+        /* 主内容区 - 三列布局 */
+        .content {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1fr 1.3fr 1fr;
+            gap: 15px;
+            min-height: 0;
+        }
+
+        /* 卡片样式 */
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            transition: all 0.4s ease;
+            border: 3px solid transparent;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+        }
+
+        /* 高亮当前步骤的卡片 */
+        .card.highlight {
+            border-color: #007AFF;
+            box-shadow: 0 0 20px rgba(0, 122, 255, 0.25), 0 4px 20px rgba(0,0,0,0.1);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 10px;
+            flex-shrink: 0;
+        }
+
+        .card-icon {
+            width: 28px;
+            height: 28px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+        }
+
+        .icon-input { background: #007AFF; }
+        .icon-process { background: #FF9500; }
+        .icon-output { background: #34C759; }
+
+        .card-title {
+            font-size: 1.15rem;
+            font-weight: 600;
+            color: #1d1d1f;
+        }
+
+        .card-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+            overflow-y: auto;
+            padding-bottom: 10px;
+        }
+
+        /* 左侧 - 输入与嵌入 */
+        .input-display {
+            background: #f0f5ff;
+            padding: 12px;
+            border-radius: 10px;
+            text-align: center;
+            font-size: 1.2rem;
+            font-weight: 500;
+            margin-bottom: 12px;
+            border: 1px solid #d0e0ff;
+            color: #1d1d1f;
+        }
+
+        .sequence-label {
+            font-size: 0.9rem;
+            color: #86868b;
+            margin-bottom: 8px;
+        }
+
+        .current-sequence {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            justify-content: center;
+            margin-bottom: 12px;
+            min-height: 42px;
+            align-items: center;
+        }
+
+        .seq-char {
+            width: 38px;
+            height: 38px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.15rem;
+            font-weight: 600;
+            color: white;
+        }
+
+        .seq-char.input { background: #007AFF; }
+        .seq-char.output { background: #34C759; }
+        .seq-char.predicting {
+            background: #FF9500;
+            animation: pulse 0.8s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .embed-section {
+            flex: 1;
+            overflow-y: auto;
+            padding-bottom: 15px;
+        }
+
+        .embed-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+            gap: 10px;
+            padding-bottom: 10px;
+        }
+
+        .embed-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            opacity: 0;
+            transform: scale(0.8);
+            transition: all 0.3s ease;
+            margin-bottom: 5px;
+        }
+
+        .embed-item.visible {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        .embed-char {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 1.15rem;
+            background: #007AFF;
+            position: relative;
+        }
+
+        .embed-char.new { background: #34C759; }
+
+        .embed-pos {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            width: 18px;
+            height: 18px;
+            background: #FF9500;
+            border-radius: 50%;
+            font-size: 0.7rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+
+        .embed-vec {
+            font-size: 0.7rem;
+            color: #86868b;
+            text-align: center;
+            margin-top: 5px;
+            font-family: monospace;
+            padding: 2px 4px;
+            background: #f5f5f7;
+            border-radius: 4px;
+        }
+
+        /* 中间 - Transformer */
+        .transformer-flow {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .layer-item {
+            background: #f5f5f7;
+            border-radius: 10px;
+            padding: 10px 14px;
+            opacity: 0.4;
+            transition: all 0.4s ease;
+            border: 2px solid transparent;
+        }
+
+        .layer-item.active {
+            opacity: 1;
+            background: #fff8f0;
+            border-color: #FF9500;
+            box-shadow: 0 0 12px rgba(255, 149, 0, 0.2);
+        }
+
+        .layer-name {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: #1d1d1f;
+            margin-bottom: 4px;
+        }
+
+        .layer-desc {
+            font-size: 0.85rem;
+            color: #86868b;
+        }
+
+        .attention-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+            margin-top: 10px;
+        }
+
+        .attention-title {
+            font-size: 0.95rem;
+            color: #1d1d1f;
+            margin-bottom: 8px;
+            text-align: center;
+        }
+
+        .attention-title .target {
+            color: #FF3B30;
+            font-weight: 700;
+            font-size: 1.2rem;
+        }
+
+        .attention-bars {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            overflow-y: auto;
+        }
+
+        .attention-bar-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            opacity: 0;
+            transition: all 0.3s ease;
+        }
+
+        .attention-bar-item.visible { opacity: 1; }
+
+        .attn-char {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            background: #007AFF;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+
+        .attn-bar-wrap {
+            flex: 1;
+            height: 26px;
+            background: #e5e5ea;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .attn-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #FF9500, #FF6B00);
+            border-radius: 6px;
+            transition: width 0.6s ease;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 8px;
+            min-width: 40px;
+        }
+
+        .attn-val {
+            font-size: 0.8rem;
+            color: white;
+            font-weight: 600;
+        }
+
+        .insight-box {
+            background: #fff8f0;
+            border-radius: 10px;
+            padding: 10px 12px;
+            margin-top: 10px;
+            border-left: 4px solid #FF9500;
+        }
+
+        .insight-text {
+            font-size: 0.9rem;
+            color: #666;
+            line-height: 1.5;
+        }
+
+        /* 右侧 - 输出 */
+        .output-flow {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            flex: 1;
+        }
+
+        .softmax-mini {
+            background: #f5f5f7;
+            border-radius: 10px;
+            padding: 10px;
+        }
+
+        .softmax-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-size: 0.85rem;
+        }
+
+        .softmax-box {
+            background: white;
+            padding: 8px 12px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .softmax-label {
+            font-size: 1rem;
+            color: #86868b;
+        }
+
+        .softmax-val {
+            font-family: monospace;
+            font-size: 1.1rem;
+            color: #1d1d1f;
+            font-weight: 500;
+        }
+
+        .softmax-arrow {
+            color: #007AFF;
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+
+        /* 滚轮选择器 */
+        .picker-container {
+            display: flex;
+            justify-content: center;
+            margin: 10px 0;
+        }
+
+        .picker-wheel {
+            width: 75px;
+            height: 120px;
+            background: linear-gradient(180deg, #f0f0f0 0%, #fff 50%, #f0f0f0 100%);
+            border-radius: 14px;
+            overflow: hidden;
+            position: relative;
+            box-shadow: inset 0 0 15px rgba(0,0,0,0.06);
+            border: 1px solid #e5e5ea;
+        }
+
+        .picker-highlight {
+            position: absolute;
+            top: 50%;
+            left: 5px;
+            right: 5px;
+            height: 40px;
+            transform: translateY(-50%);
+            background: rgba(0,122,255,0.1);
+            border-radius: 10px;
+            border: 2px solid rgba(0,122,255,0.3);
+            z-index: 1;
+        }
+
+        .picker-items {
+            position: absolute;
+            width: 100%;
+            padding-top: 40px;
+            transition: transform 0.1s ease-out;
+        }
+
+        .picker-item {
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3rem;
+            color: #86868b;
+        }
+
+        .picker-item.selected {
+            font-weight: 700;
+            color: #007AFF;
+            font-size: 1.6rem;
+        }
+
+        .picker-prob {
+            text-align: center;
+            font-size: 1rem;
+            color: #34C759;
+            font-weight: 700;
+            margin-top: 6px;
+        }
+
+        /* 概率分布 */
+        .prob-section {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .prob-title {
+            font-size: 0.9rem;
+            color: #86868b;
+            margin-bottom: 8px;
+        }
+
+        .prob-bars {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .prob-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            opacity: 0;
+            transition: all 0.3s ease;
+        }
+
+        .prob-item.visible { opacity: 1; }
+
+        .prob-char {
+            width: 30px;
+            height: 30px;
+            border-radius: 6px;
+            background: #e5e5ea;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+
+        .prob-char.top {
+            background: #34C759;
+            color: white;
+        }
+
+        .prob-bar-wrap {
+            flex: 1;
+            height: 24px;
+            background: #e5e5ea;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .prob-bar {
+            height: 100%;
+            background: #007AFF;
+            border-radius: 6px;
+            transition: width 0.6s ease;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 6px;
+            min-width: 35px;
+        }
+
+        .prob-bar.top {
+            background: #34C759;
+        }
+
+        .prob-val {
+            font-size: 0.75rem;
+            color: white;
+            font-weight: 600;
+        }
+
+        /* 最终输出 */
+        .final-output {
+            background: #f0fff4;
+            border-radius: 12px;
+            padding: 12px;
+            text-align: center;
+            border: 1px solid #c8f0d4;
+        }
+
+        .final-label {
+            font-size: 0.85rem;
+            color: #86868b;
+            margin-bottom: 8px;
+        }
+
+        .output-chars {
+            display: flex;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .output-char {
+            width: 42px;
+            height: 42px;
+            background: #34C759;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.4rem;
+            font-weight: 700;
+            opacity: 0;
+            transform: scale(0);
+            transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+
+        .output-char.visible {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        /* 底部状态栏 */
+        .status-bar {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            flex-shrink: 0;
+            padding: 10px 15px;
+            background: white;
+            border-radius: 16px;
+            margin-top: 5px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+        }
+
+        .iteration-badge {
+            background: #007AFF;
+            padding: 6px 16px;
+            border-radius: 20px;
+            color: white;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        /* 自回归循环指示 - 带文字 */
+        .loop-indicator {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .loop-step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 3px;
+            padding: 6px 12px;
+            border-radius: 12px;
+            transition: all 0.4s ease;
+            border: 2px solid transparent;
+        }
+
+        .loop-step.active {
+            background: #f0f5ff;
+            border-color: #007AFF;
+            box-shadow: 0 0 15px rgba(0,122,255,0.2);
+        }
+
+        .loop-step-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+
+        .loop-step.active .loop-step-icon {
+            transform: scale(1.15);
+        }
+
+        .loop-step-input .loop-step-icon { background: #007AFF; }
+        .loop-step-process .loop-step-icon { background: #FF9500; }
+        .loop-step-output .loop-step-icon { background: #34C759; }
+
+        .loop-step-label {
+            font-size: 0.7rem;
+            color: #86868b;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+
+        .loop-step.active .loop-step-label {
+            color: #007AFF;
+            font-weight: 600;
+        }
+
+        .loop-arrow {
+            color: #c7c7cc;
+            font-size: 1rem;
+            font-weight: bold;
+        }
+
+        .loop-arrow.back {
+            font-size: 1.2rem;
+        }
+
+        /* 滚动条美化 */
+        ::-webkit-scrollbar {
+            width: 3px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #c7c7cc;
+            border-radius: 2px;
+        }
+
+        /* 响应式 */
+        @media (max-width: 1100px) {
+            .loop-step-label {
+                font-size: 0.6rem;
+            }
+            .loop-step {
+                padding: 4px 8px;
+            }
+        }
+
+        @media (max-width: 900px) {
+            .main-container {
+                padding: 8px;
+            }
+            .content {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto auto auto;
+            }
+            .card {
+                max-height: 28vh;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <!-- 顶部标题栏 -->
+        <div class="header">
+            <div class="title">AI大语言模型原理演示</div>
+            <button class="start-btn" id="startBtn" onclick="startDemo()">开始演示</button>
+        </div>
+
+        <!-- 主内容区 -->
+        <div class="content">
+            <!-- 左侧：输入与嵌入层 -->
+            <div class="card" id="cardInput">
+                <div class="card-header">
+                    <div class="card-icon icon-input">📝</div>
+                    <div class="card-title">Step1: 输入 & 嵌入层</div>
+                </div>
+                <div class="card-content">
+                    <div class="input-display">"天王盖地虎，下一句？"</div>
+
+                    <div class="sequence-label">当前输入序列（自回归：每次预测后+1字）</div>
+                    <div class="current-sequence" id="currentSequence">
+                        <span style="color:#86868b;font-size:0.75rem;">点击开始演示</span>
+                    </div>
+
+                    <div class="sequence-label">嵌入向量（语义向量 + 位置编码）</div>
+                    <div class="embed-section">
+                        <div class="embed-grid" id="embedGrid"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 中间：Transformer层 -->
+            <div class="card" id="cardTransformer">
+                <div class="card-header">
+                    <div class="card-icon icon-process">🧠</div>
+                    <div class="card-title">Step2: Transformer层（注意力机制）</div>
+                </div>
+                <div class="card-content">
+                    <div class="transformer-flow">
+                        <div class="layer-item" id="layer1">
+                            <div class="layer-name">🔹 浅层：词法分析</div>
+                            <div class="layer-desc">识别基本词汇和句式结构</div>
+                        </div>
+                        <div class="layer-item" id="layer2">
+                            <div class="layer-name">🔸 中层：语义理解</div>
+                            <div class="layer-desc">理解"天王盖地虎"是江湖暗语/对联</div>
+                        </div>
+                        <div class="layer-item" id="layer3">
+                            <div class="layer-name">🔶 深层：知识检索</div>
+                            <div class="layer-desc">从记忆中检索对应回复"宝塔镇河妖"</div>
+                        </div>
+                    </div>
+
+                    <div class="attention-section">
+                        <div class="attention-title" id="attnTitle">
+                            预测 "<span class="target">?</span>" 时对前文的注意力权重
+                        </div>
+                        <div class="attention-bars" id="attentionBars"></div>
+                        <div class="insight-box">
+                            <div class="insight-text" id="insightText">💡 点击"开始演示"查看AI的思考过程</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 右侧：输出层 -->
+            <div class="card" id="cardOutput">
+                <div class="card-header">
+                    <div class="card-icon icon-output">✨</div>
+                    <div class="card-title">Step3: 输出层（概率预测）</div>
+                </div>
+                <div class="card-content">
+                    <div class="output-flow">
+                        <!-- Softmax -->
+                        <div class="softmax-mini">
+                            <div class="softmax-row">
+                                <div class="softmax-box">
+                                    <div class="softmax-label">原始分数(logits)</div>
+                                    <div class="softmax-val" id="rawScore">-</div>
+                                </div>
+                                <span class="softmax-arrow">→</span>
+                                <div class="softmax-box">
+                                    <div class="softmax-label">Softmax概率</div>
+                                    <div class="softmax-val" id="probScore">-</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 滚轮 -->
+                        <div class="picker-container">
+                            <div>
+                                <div class="picker-wheel">
+                                    <div class="picker-highlight"></div>
+                                    <div class="picker-items" id="pickerItems">
+                                        <div class="picker-item">-</div>
+                                    </div>
+                                </div>
+                                <div class="picker-prob" id="pickerProb">?</div>
+                            </div>
+                        </div>
+
+                        <!-- 概率分布 -->
+                        <div class="prob-section">
+                            <div class="prob-title">候选字概率分布（抽卡选字）</div>
+                            <div class="prob-bars" id="probBars"></div>
+                        </div>
+
+                        <!-- 最终输出 -->
+                        <div class="final-output">
+                            <div class="final-label">🎉 AI生成的完整回答</div>
+                            <div class="output-chars" id="outputChars"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 底部状态栏 - 带文字说明 -->
+        <div class="status-bar">
+            <div class="loop-indicator">
+                <div class="loop-step loop-step-input" id="loopInput">
+                    <div class="loop-step-icon">📝</div>
+                    <div class="loop-step-label">读取输入</div>
+                </div>
+                <span class="loop-arrow">→</span>
+                <div class="loop-step loop-step-process" id="loopProcess">
+                    <div class="loop-step-icon">🧠</div>
+                    <div class="loop-step-label">模型计算</div>
+                </div>
+                <span class="loop-arrow">→</span>
+                <div class="loop-step loop-step-output" id="loopOutput">
+                    <div class="loop-step-icon">✨</div>
+                    <div class="loop-step-label">输出1个字</div>
+                </div>
+                <span class="loop-arrow back">↩️</span>
+            </div>
+            <div class="iteration-badge" id="iterationBadge">等待开始</div>
+        </div>
+    </div>
+
+    <script>
+        // 检测是否独立运行（不在iframe中）
+        if (window.self === window.top) {
+            document.body.classList.add('standalone');
+        }
+
+        const inputText = "天王盖地虎";
+        const outputText = "宝塔镇河妖";
+
+        // 动画速度控制（毫秒）
+        const SPEED = {
+            loopStep: 500,
+            embedChar: 80,
+            embedPause: 400,
+            layerSwitch: 350,
+            layerPause: 300,
+            attnBar: 100,
+            attnPause: 600,
+            pickerSpin: 70,
+            probBar: 60,
+            charOutput: 100,
+            iterationGap: 800
+        };
+
+        const mockVectors = {
+            '天': [0.82, -0.45], '王': [0.67, 0.23], '盖': [0.15, 0.78],
+            '地': [0.91, -0.12], '虎': [-0.33, 0.89], '宝': [0.72, 0.45],
+            '塔': [0.58, -0.67], '镇': [-0.25, 0.93], '河': [0.88, 0.12], '妖': [-0.55, 0.78]
+        };
+
+        const outputData = {
+            '宝': {
+                attention: { '天': 0.25, '王': 0.15, '盖': 0.12, '地': 0.18, '虎': 0.30 },
+                insight: '💡 AI注意到"虎"是句末，需要押韵。"天王"与"宝塔"形成对仗结构。',
+                candidates: ['宝', '金', '银', '玉', '珠'],
+                probs: [0.92, 0.04, 0.02, 0.01, 0.01],
+                rawScores: [5.2, 2.1, 1.5, 0.8, 0.3]
+            },
+            '塔': {
+                attention: { '天': 0.20, '王': 0.22, '盖': 0.10, '地': 0.15, '虎': 0.18, '宝': 0.15 },
+                insight: '💡 "宝"后需要名词搭配，"宝塔"是高频词组，且与"天王"对仗。',
+                candidates: ['塔', '殿', '楼', '阁', '山'],
+                probs: [0.89, 0.05, 0.03, 0.02, 0.01],
+                rawScores: [4.8, 1.9, 1.2, 0.7, 0.2]
+            },
+            '镇': {
+                attention: { '天': 0.15, '王': 0.12, '盖': 0.28, '地': 0.20, '虎': 0.10, '宝': 0.08, '塔': 0.07 },
+                insight: '💡 重点关注"盖"（动词），需要找对应动词。"镇"与"盖"形成动作对仗。',
+                candidates: ['镇', '压', '守', '护', '降'],
+                probs: [0.87, 0.06, 0.04, 0.02, 0.01],
+                rawScores: [4.5, 2.0, 1.4, 0.9, 0.4]
+            },
+            '河': {
+                attention: { '天': 0.12, '王': 0.10, '盖': 0.15, '地': 0.30, '虎': 0.12, '宝': 0.06, '塔': 0.05, '镇': 0.10 },
+                insight: '💡 高度关注"地"字，需要找对应地理名词。"河"与"地"语义相关。',
+                candidates: ['河', '江', '海', '湖', '山'],
+                probs: [0.85, 0.07, 0.04, 0.03, 0.01],
+                rawScores: [4.3, 2.2, 1.6, 1.1, 0.5]
+            },
+            '妖': {
+                attention: { '天': 0.10, '王': 0.08, '盖': 0.12, '地': 0.15, '虎': 0.35, '宝': 0.05, '塔': 0.04, '镇': 0.06, '河': 0.05 },
+                insight: '💡 最关注"虎"（威胁/动物），找对应概念"妖"，且虎-妖押韵！',
+                candidates: ['妖', '魔', '怪', '鬼', '兽'],
+                probs: [0.94, 0.03, 0.02, 0.01, 0.00],
+                rawScores: [5.5, 1.8, 1.2, 0.6, 0.1]
+            }
+        };
+
+        let isRunning = false;
+
+        function highlightCard(cardId) {
+            document.querySelectorAll('.card').forEach(c => c.classList.remove('highlight'));
+            if (cardId) {
+                document.getElementById(cardId).classList.add('highlight');
+            }
+        }
+
+        function highlightLoopStep(stepId) {
+            document.querySelectorAll('.loop-step').forEach(s => s.classList.remove('active'));
+            if (stepId) {
+                document.getElementById(stepId).classList.add('active');
+            }
+        }
+
+        async function startDemo() {
+            if (isRunning) return;
+            isRunning = true;
+
+            const btn = document.getElementById('startBtn');
+            btn.disabled = true;
+            btn.textContent = '演示中...';
+
+            resetDemo();
+
+            for (let i = 0; i < outputText.length; i++) {
+                const char = outputText[i];
+                const currentInput = inputText + outputText.substring(0, i);
+
+                document.getElementById('iterationBadge').textContent =
+                    `第 ${i + 1} / ${outputText.length} 次预测循环`;
+
+                // Step 1: 输入与嵌入
+                highlightLoopStep('loopInput');
+                highlightCard('cardInput');
+                updateSequence(currentInput, true);
+                await sleep(SPEED.loopStep);
+                await showEmbedding(currentInput);
+
+                // Step 2: Transformer处理
+                highlightLoopStep('loopProcess');
+                highlightCard('cardTransformer');
+                await sleep(SPEED.loopStep);
+                await showTransformer(char);
+
+                // Step 3: 输出
+                highlightLoopStep('loopOutput');
+                highlightCard('cardOutput');
+                await sleep(SPEED.loopStep);
+                await showOutput(char, i);
+
+                // 更新序列和嵌入层（显示新生成的字）
+                const newSequence = currentInput + char;
+                updateSequence(newSequence, false);
+                await showEmbedding(newSequence);
+
+                await sleep(SPEED.iterationGap);
+            }
+
+            highlightCard(null);
+            highlightLoopStep(null);
+            document.getElementById('iterationBadge').textContent = '✅ 生成完成！';
+            btn.disabled = false;
+            btn.textContent = '重新演示';
+            isRunning = false;
+        }
+
+        function resetDemo() {
+            document.getElementById('currentSequence').innerHTML = '';
+            document.getElementById('embedGrid').innerHTML = '';
+            document.getElementById('attentionBars').innerHTML = '';
+            document.getElementById('probBars').innerHTML = '';
+            document.getElementById('outputChars').innerHTML = '';
+            document.getElementById('insightText').textContent = '💡 点击"开始演示"查看AI的思考过程';
+            document.getElementById('attnTitle').innerHTML = '预测 "<span class="target">?</span>" 时对前文的注意力权重';
+            document.getElementById('rawScore').textContent = '-';
+            document.getElementById('probScore').textContent = '-';
+            document.getElementById('pickerProb').textContent = '?';
+            document.getElementById('pickerItems').innerHTML = '<div class="picker-item">-</div>';
+
+            document.querySelectorAll('.layer-item').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.loop-step').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.card').forEach(el => el.classList.remove('highlight'));
+        }
+
+        function updateSequence(text, predicting) {
+            const container = document.getElementById('currentSequence');
+            container.innerHTML = '';
+
+            for (let i = 0; i < text.length; i++) {
+                const span = document.createElement('span');
+                span.className = 'seq-char ' + (i < inputText.length ? 'input' : 'output');
+                span.textContent = text[i];
+                container.appendChild(span);
+            }
+
+            if (predicting) {
+                const span = document.createElement('span');
+                span.className = 'seq-char predicting';
+                span.textContent = '?';
+                container.appendChild(span);
+            }
+        }
+
+        async function showEmbedding(text) {
+            const grid = document.getElementById('embedGrid');
+            grid.innerHTML = '';
+
+            for (let i = 0; i < text.length; i++) {
+                const char = text[i];
+                const vec = mockVectors[char] || [0, 0];
+                const isNew = i >= inputText.length;
+
+                const item = document.createElement('div');
+                item.className = 'embed-item';
+                item.innerHTML = `
+                    <div class="embed-char ${isNew ? 'new' : ''}">
+                        ${char}
+                        <span class="embed-pos">${i + 1}</span>
+                    </div>
+                    <div class="embed-vec">[${vec[0]},${vec[1]}]</div>
+                `;
+                grid.appendChild(item);
+
+                await sleep(SPEED.embedChar);
+                item.classList.add('visible');
+            }
+
+            await sleep(SPEED.embedPause);
+        }
+
+        async function showTransformer(targetChar) {
+            const layers = ['layer1', 'layer2', 'layer3'];
+            for (const id of layers) {
+                document.querySelectorAll('.layer-item').forEach(el => el.classList.remove('active'));
+                document.getElementById(id).classList.add('active');
+                await sleep(SPEED.layerSwitch);
+            }
+            await sleep(SPEED.layerPause);
+
+            const data = outputData[targetChar];
+            const bars = document.getElementById('attentionBars');
+            bars.innerHTML = '';
+
+            document.getElementById('attnTitle').innerHTML =
+                `预测 "<span class="target">${targetChar}</span>" 时对前文的注意力权重`;
+
+            const sorted = Object.entries(data.attention).sort((a, b) => b[1] - a[1]);
+
+            for (const [char, weight] of sorted) {
+                const item = document.createElement('div');
+                item.className = 'attention-bar-item';
+                item.innerHTML = `
+                    <div class="attn-char">${char}</div>
+                    <div class="attn-bar-wrap">
+                        <div class="attn-bar" style="width: 0%">
+                            <span class="attn-val">${(weight * 100).toFixed(0)}%</span>
+                        </div>
+                    </div>
+                `;
+                bars.appendChild(item);
+
+                await sleep(SPEED.attnBar);
+                item.classList.add('visible');
+                setTimeout(() => {
+                    item.querySelector('.attn-bar').style.width = `${weight * 100}%`;
+                }, 50);
+            }
+
+            document.getElementById('insightText').textContent = data.insight;
+            await sleep(SPEED.attnPause);
+        }
+
+        async function showOutput(targetChar, index) {
+            const data = outputData[targetChar];
+
+            document.getElementById('rawScore').textContent =
+                data.rawScores.slice(0, 2).map(s => s.toFixed(1)).join(', ') + '...';
+            document.getElementById('probScore').textContent =
+                data.probs.slice(0, 2).map(p => (p * 100).toFixed(0) + '%').join(', ') + '...';
+
+            // 滚轮动画
+            const pickerItems = document.getElementById('pickerItems');
+            pickerItems.innerHTML = data.candidates.map((c, i) =>
+                `<div class="picker-item ${i === 0 ? 'selected' : ''}">${c}</div>`
+            ).join('');
+
+            const probDisplay = document.getElementById('pickerProb');
+
+            for (let i = 0; i < 10; i++) {
+                const offset = Math.floor(Math.random() * 4);
+                pickerItems.style.transform = `translateY(${-offset * 34}px)`;
+                pickerItems.querySelectorAll('.picker-item').forEach((item, idx) => {
+                    item.classList.toggle('selected', idx === offset);
+                });
+                probDisplay.textContent = `${Math.floor(Math.random() * 50 + 40)}%`;
+                await sleep(SPEED.pickerSpin + i * 8);
+            }
+
+            pickerItems.style.transform = 'translateY(0)';
+            pickerItems.querySelectorAll('.picker-item').forEach((item, idx) => {
+                item.classList.toggle('selected', idx === 0);
+            });
+            probDisplay.textContent = `${(data.probs[0] * 100).toFixed(0)}%`;
+
+            // 概率条
+            const probBars = document.getElementById('probBars');
+            probBars.innerHTML = '';
+
+            for (let i = 0; i < data.candidates.length; i++) {
+                const item = document.createElement('div');
+                item.className = 'prob-item';
+                item.innerHTML = `
+                    <div class="prob-char ${i === 0 ? 'top' : ''}">${data.candidates[i]}</div>
+                    <div class="prob-bar-wrap">
+                        <div class="prob-bar ${i === 0 ? 'top' : ''}" style="width: 0%">
+                            <span class="prob-val">${(data.probs[i] * 100).toFixed(0)}%</span>
+                        </div>
+                    </div>
+                `;
+                probBars.appendChild(item);
+
+                await sleep(SPEED.probBar);
+                item.classList.add('visible');
+                setTimeout(() => {
+                    item.querySelector('.prob-bar').style.width = `${Math.max(data.probs[i] * 100, 10)}%`;
+                }, 30);
+            }
+
+            // 输出字符
+            const outputChars = document.getElementById('outputChars');
+            const char = document.createElement('div');
+            char.className = 'output-char';
+            char.textContent = targetChar;
+            outputChars.appendChild(char);
+
+            await sleep(SPEED.charOutput);
+            char.classList.add('visible');
+
+            await sleep(300);
+        }
+
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+    </script>
+</body>
+</html>
