@@ -744,6 +744,7 @@
         <div class="header">
             <div class="title">AI大语言模型原理演示</div>
             <button class="start-btn" id="startBtn" onclick="startDemo()">开始演示</button>
+            <button class="start-btn pause-btn" id="pauseBtn" onclick="togglePause()" style="display:none; background:#FF9500;">暂停</button>
         </div>
 
         <!-- 主内容区 -->
@@ -947,6 +948,25 @@
         };
 
         let isRunning = false;
+        let isPaused = false;
+        let pauseResolve = null;
+
+        function togglePause() {
+            const btn = document.getElementById('pauseBtn');
+            if (isPaused) {
+                isPaused = false;
+                btn.textContent = '暂停';
+                btn.style.background = '#FF9500';
+                if (pauseResolve) {
+                    pauseResolve();
+                    pauseResolve = null;
+                }
+            } else {
+                isPaused = true;
+                btn.textContent = '继续';
+                btn.style.background = '#34C759';
+            }
+        }
 
         function highlightCard(cardId) {
             document.querySelectorAll('.card').forEach(c => c.classList.remove('highlight'));
@@ -969,6 +989,12 @@
             const btn = document.getElementById('startBtn');
             btn.disabled = true;
             btn.textContent = '演示中...';
+
+            const pauseBtn = document.getElementById('pauseBtn');
+            pauseBtn.style.display = 'inline-block';
+            isPaused = false;
+            pauseBtn.textContent = '暂停';
+            pauseBtn.style.background = '#FF9500';
 
             resetDemo();
 
@@ -1011,6 +1037,7 @@
             document.getElementById('iterationBadge').textContent = '✅ 生成完成！';
             btn.disabled = false;
             btn.textContent = '重新演示';
+            document.getElementById('pauseBtn').style.display = 'none';
             isRunning = false;
         }
 
@@ -1190,7 +1217,18 @@
         }
 
         function sleep(ms) {
-            return new Promise(resolve => setTimeout(resolve, ms));
+            return new Promise(resolve => {
+                const checkPause = () => {
+                    if (isPaused) {
+                        pauseResolve = () => {
+                            setTimeout(resolve, ms);
+                        };
+                    } else {
+                        setTimeout(resolve, ms);
+                    }
+                };
+                checkPause();
+            });
         }
     </script>
 </body>

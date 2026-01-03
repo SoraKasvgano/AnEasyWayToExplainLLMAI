@@ -426,6 +426,7 @@
     <div class="top-bar">
         <div class="title">AI大模型原理 3D 可视化</div>
         <button class="btn" id="startBtn" onclick="startDemo()">开始演示</button>
+        <button class="btn" id="pauseBtn" onclick="togglePause()" style="display:none; background: rgba(255,149,0,0.9);">暂停</button>
         <button class="btn" onclick="resetCamera()" style="background: rgba(100,100,120,0.8);">重置视角</button>
     </div>
 
@@ -540,6 +541,8 @@
         let queryMesh = null;
         let searchBeam = null;
         let isRunning = false;
+        let isPaused = false;
+        let pauseResolve = null;
 
         const inputText = "天王盖地虎";
         const outputText = "宝塔镇河妖";
@@ -894,7 +897,35 @@
 
         // ============ 工具函数 ============
         function sleep(ms) {
-            return new Promise(resolve => setTimeout(resolve, ms));
+            return new Promise(resolve => {
+                const checkPause = () => {
+                    if (isPaused) {
+                        pauseResolve = () => {
+                            setTimeout(resolve, ms);
+                        };
+                    } else {
+                        setTimeout(resolve, ms);
+                    }
+                };
+                checkPause();
+            });
+        }
+
+        function togglePause() {
+            const btn = document.getElementById('pauseBtn');
+            if (isPaused) {
+                isPaused = false;
+                btn.textContent = '暂停';
+                btn.style.background = 'rgba(255,149,0,0.9)';
+                if (pauseResolve) {
+                    pauseResolve();
+                    pauseResolve = null;
+                }
+            } else {
+                isPaused = true;
+                btn.textContent = '继续';
+                btn.style.background = 'rgba(52,199,89,0.9)';
+            }
         }
 
         function setStepActive(stepNum) {
@@ -971,6 +1002,12 @@
             btn.disabled = true;
             btn.textContent = '演示中...';
 
+            const pauseBtn = document.getElementById('pauseBtn');
+            pauseBtn.style.display = 'inline-block';
+            isPaused = false;
+            pauseBtn.textContent = '暂停';
+            pauseBtn.style.background = 'rgba(255,149,0,0.9)';
+
             document.getElementById('currentStatus').style.display = 'block';
             document.getElementById('candidatesPanel').style.display = 'none';
 
@@ -1012,7 +1049,7 @@
                     charMeshes[selected].originalY = charData.pos.y;
                 }
 
-                await sleep(800);
+                await sleep(1200);
 
                 // 清除注意力线和候选
                 clearAttentionAndCandidates();
@@ -1033,6 +1070,7 @@
 
             btn.disabled = false;
             btn.textContent = '重新演示';
+            document.getElementById('pauseBtn').style.display = 'none';
             isRunning = false;
         }
 
@@ -1058,14 +1096,14 @@
                     const char = text[i];
                     const data = embedPositions[char];
                     if (data && !charMeshes[char]) {
-                        await sleep(200);
+                        await sleep(400);
                         charMeshes[char] = createCharSphere(char, data.pos, data.color);
                         charMeshes[char].originalY = data.pos.y;
                     }
                 }
             }
 
-            await sleep(1000);
+            await sleep(1500);
         }
 
         // Step 2: Transformer
@@ -1093,7 +1131,7 @@
             queryMesh = createCharSphere('?', queryPos, 0xFF3B30, 0.8);
             queryMesh.originalY = queryPos.y;
 
-            await sleep(500);
+            await sleep(800);
 
             // 绘制注意力连线
             for (const [char, weight] of Object.entries(data.attention)) {
@@ -1102,11 +1140,11 @@
                     const lineObj = createCurvedAttentionLine(fromPos, queryPos, weight);
                     attentionLines.push(lineObj);
                     animationObjects.push(lineObj);
-                    await sleep(150);
+                    await sleep(300);
                 }
             }
 
-            await sleep(1500);
+            await sleep(2000);
         }
 
         // Step 3: 输出层
@@ -1135,7 +1173,7 @@
             for (let i = 0; i < data.candidates.length; i++) {
                 const cand = data.candidates[i];
 
-                await sleep(200);
+                await sleep(400);
 
                 // 3D球体
                 const color = i === 0 ? 0x34C759 : 0xFF9500;
@@ -1177,7 +1215,7 @@
                 listEl.appendChild(item);
             }
 
-            await sleep(1500);
+            await sleep(2000);
 
             return data.candidates[0].char;
         }
