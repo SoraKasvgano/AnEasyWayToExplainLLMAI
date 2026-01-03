@@ -77,178 +77,27 @@
             .ui-wrapper {
                 position: relative;
                 min-height: 100vh;
-                transform: none !important;
-                width: 100% !important;
-                height: auto !important;
             }
-
-            /* 顶部控制栏 */
-            .top-bar {
+            .info-panel, .candidates-panel {
                 position: relative;
                 top: auto;
                 left: auto;
-                transform: none;
-                padding: 8px 10px;
-                padding-left: 10px;
-                flex-wrap: wrap;
-                justify-content: center;
-                gap: 8px;
-                background: rgba(20, 20, 40, 0.9);
-                margin: 5px;
-                border-radius: 12px;
-            }
-            .title {
-                font-size: 1rem;
-            }
-            .btn {
-                padding: 8px 14px;
-                font-size: 0.85rem;
-                border-radius: 8px;
-            }
-
-            /* 步骤指示器 */
-            .step-indicator {
-                position: relative;
-                top: auto;
-                left: auto;
-                transform: none;
-                margin: 5px;
-                padding: 8px 12px;
-                flex-wrap: wrap;
-                justify-content: center;
-            }
-            .step-item {
-                padding: 4px 8px;
-            }
-            .step-num {
-                width: 22px;
-                height: 22px;
-                font-size: 0.75rem;
-            }
-            .step-name {
-                font-size: 0.8rem;
-            }
-            .step-arrow {
-                font-size: 0.9rem;
-            }
-
-            /* 左侧信息面板 */
-            .info-panel {
-                position: relative;
-                top: auto;
-                left: auto;
-                margin: 5px;
-                width: calc(100% - 10px);
-                max-height: none;
-                padding: 12px;
-            }
-            .panel-title {
-                font-size: 1rem;
-                margin-bottom: 10px;
-            }
-            .panel-title-icon {
-                font-size: 1.2rem;
-            }
-            .explanation {
-                font-size: 0.85rem;
-                line-height: 1.5;
-            }
-            .formula-box {
-                font-size: 0.8rem;
-                padding: 8px;
-            }
-            .current-status {
-                padding: 8px;
-            }
-            .status-label {
-                font-size: 0.8rem;
-            }
-            .status-value {
-                font-size: 0.85rem;
-            }
-
-            /* 右侧候选面板 */
-            .candidates-panel {
-                position: relative;
-                top: auto;
                 right: auto;
-                margin: 5px;
-                width: calc(100% - 10px);
-                padding: 12px;
+                margin: 10px;
+                width: calc(100% - 20px);
+                max-height: none;
             }
-            .candidate-item {
-                padding: 8px;
-                margin-bottom: 6px;
+            .legend, .hint {
+                position: relative;
+                bottom: auto;
+                left: auto;
+                right: auto;
+                margin: 10px;
             }
-            .candidate-char {
-                width: 36px;
-                height: 36px;
-                font-size: 1.1rem;
-                border-radius: 8px;
-            }
-            .candidate-prob {
-                font-size: 0.95rem;
-            }
-            .candidate-dist {
-                font-size: 0.75rem;
-            }
-
-            /* 底部输出展示 */
             .bottom-bar {
                 position: relative;
                 bottom: auto;
-                left: auto;
-                transform: none;
-                margin: 10px auto;
-                padding: 0 5px;
-            }
-            .output-display {
-                padding: 10px 15px;
-                border-radius: 12px;
-                flex-wrap: wrap;
-                justify-content: center;
-            }
-            .output-label {
-                font-size: 0.85rem;
-            }
-            .output-char {
-                width: 36px;
-                height: 36px;
-                font-size: 1.1rem;
-                border-radius: 8px;
-            }
-            .output-chars {
-                gap: 5px;
-            }
-
-            /* 图例 */
-            .legend {
-                position: relative;
-                bottom: auto;
-                left: auto;
-                margin: 5px;
-                padding: 8px 12px;
-                display: inline-block;
-            }
-            .legend-item {
-                font-size: 0.75rem;
-                gap: 6px;
-                margin-bottom: 4px;
-            }
-            .legend-dot {
-                width: 10px;
-                height: 10px;
-            }
-
-            /* 提示 */
-            .hint {
-                position: relative;
-                bottom: auto;
-                right: auto;
-                margin: 5px;
-                padding: 6px 10px;
-                font-size: 0.75rem;
-                display: inline-block;
+                margin: 20px auto;
             }
         }
 
@@ -795,13 +644,16 @@
         // 手机横屏自适应缩放UI
         function handleUIResize() {
             const wrapper = document.querySelector('.ui-wrapper');
+            const baseWidth = 1200;
             const windowWidth = window.innerWidth;
+            const windowHeight = window.innerHeight;
 
-            // 手机上使用响应式布局，不缩放
-            if (windowWidth < 1000) {
-                wrapper.style.transform = 'none';
-                wrapper.style.width = '100%';
-                wrapper.style.height = 'auto';
+            // 只在小屏幕上应用缩放
+            if (windowWidth < baseWidth) {
+                const scale = windowWidth / baseWidth;
+                wrapper.style.transform = `scale(${scale})`;
+                wrapper.style.width = baseWidth + 'px';
+                wrapper.style.height = (windowHeight / scale) + 'px';
             } else {
                 wrapper.style.transform = 'none';
                 wrapper.style.width = '100%';
